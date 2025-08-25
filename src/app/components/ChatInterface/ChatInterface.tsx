@@ -10,9 +10,10 @@ import React, {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Bot, LoaderCircle, SquarePen, History, X } from "lucide-react";
+import { Send, Bot, LoaderCircle, SquarePen, History, X, AlertCircle } from "lucide-react";
 import { ChatMessage } from "../ChatMessage/ChatMessage";
 import { ThreadHistorySidebar } from "../ThreadHistorySidebar/ThreadHistorySidebar";
+// import { InterruptDialog } from "../InterruptDialog/InterruptDialog"; // No longer needed - using main textbox
 import type { SubAgent, TodoItem, ToolCall } from "../../types/types";
 import { useChat } from "../../hooks/useChat";
 import styles from "./ChatInterface.module.scss";
@@ -43,11 +44,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     onNewThread,
     isLoadingThreadState,
   }) => {
-    const [input, setInput] = useState("");
+    // Default message for new conversations
+    const defaultMessage = "creami un piano di sviluppo (non voglio gantt, stime ma soluzioni tecniche) per implementare US-2025-1258: Introduzione delle sessioni di lavoro in Agile Studio e Requirement Studio del progetto fairmind studio";
+    
+    const [input, setInput] = useState(defaultMessage);
     const [isThreadHistoryOpen, setIsThreadHistoryOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const { messages, isLoading, sendMessage, stopStream } = useChat(
+    const { messages, isLoading, interrupt, sendMessage, stopStream, resumeWithValue } = useChat(
       threadId,
       setThreadId,
       onTodosUpdate,
@@ -58,16 +62,38 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    // Reset to default message when starting a new thread
+    useEffect(() => {
+      if (!threadId && messages.length === 0) {
+        setInput(defaultMessage);
+      }
+    }, [threadId, messages.length, defaultMessage]);
+
     const handleSubmit = useCallback(
       (e: FormEvent) => {
         e.preventDefault();
         const messageText = input.trim();
-        if (!messageText || isLoading) return;
-        sendMessage(messageText);
+        if (!messageText) return;
+        
+        if (interrupt) {
+          // If there's an interrupt, send as response to the interrupt
+          resumeWithValue(messageText);
+        } else if (!isLoading) {
+          // Otherwise send as normal message
+          sendMessage(messageText);
+        }
         setInput("");
       },
-      [input, isLoading, sendMessage],
+      [input, isLoading, interrupt, sendMessage, resumeWithValue],
     );
+
+    // Handle resume from interrupt - no longer needed as we use the main input
+    // const handleInterruptResume = useCallback(
+    //   (value: string) => {
+    //     resumeWithValue(value);
+    //   },
+    //   [resumeWithValue],
+    // );
 
     const handleNewThread = useCallback(() => {
       // Cancel any ongoing thread when creating new thread
@@ -75,8 +101,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         stopStream();
       }
       setIsThreadHistoryOpen(false);
+      setInput(defaultMessage); // Reset to default message for new thread
       onNewThread();
-    }, [isLoading, stopStream, onNewThread]);
+    }, [isLoading, stopStream, onNewThread, defaultMessage]);
 
     const handleThreadSelect = useCallback(
       (id: string) => {
@@ -182,7 +209,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     }, [messages]);
 
     return (
-      <div className={styles.container}>
+      <>
+        <div className={styles.container}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <Bot className={styles.logo} />
@@ -242,15 +270,31 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             </div>
           </div>
         </div>
+        {/* Interrupt Banner - shows the question when agent needs input */}
+        {interrupt && (
+          <div className={styles.interruptBanner}>
+            <div className={styles.interruptHeader}>
+              <AlertCircle className={styles.interruptIcon} />
+              <span className={styles.interruptTitle}>Agent needs your input:</span>
+            </div>
+            <div className={styles.interruptQuestion}>
+              {typeof interrupt === "string"
+                ? interrupt
+                : interrupt?.value || interrupt?.message || "Please provide input:"}
+            </div>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className={styles.inputForm}>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            disabled={isLoading}
+            placeholder={interrupt ? "Type your response here..." : "Type your message..."}
+            disabled={isLoading && !interrupt} // Only disable during loading if NOT interrupt
             className={styles.input}
+            autoFocus={!!interrupt} // Auto-focus when interrupt is active
           />
-          {isLoading ? (
+          {isLoading && !interrupt ? (
             <Button
               type="button"
               onClick={stopStream}
@@ -268,7 +312,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             </Button>
           )}
         </form>
-      </div>
+        </div>
+      </>
     );
   },
 );

@@ -190,6 +190,59 @@
   }
 }
 
+// Interrupt banner styles
+.interruptBanner {
+  padding: $spacing-md $spacing-lg;
+  background: var(--color-warning);
+  background: linear-gradient(135deg, 
+    rgba(245, 158, 11, 0.1) 0%, 
+    rgba(245, 158, 11, 0.2) 100%);
+  border-top: 2px solid var(--color-warning);
+  animation: slideDown 0.3s ease-out;
+}
+
+.interruptHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.interruptIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-warning);
+}
+
+.interruptTitle {
+  font-weight: $font-weight-semibold;
+  color: var(--color-warning);
+  font-size: $font-size-sm;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.interruptQuestion {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  font-size: $font-size-base;
+  line-height: 1.5;
+  border-left: 3px solid var(--color-warning);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);

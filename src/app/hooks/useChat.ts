@@ -56,6 +56,28 @@ export function useChat(
     defaultHeaders: {
       "x-auth-scheme": "langsmith",
     },
+    // Add debug logging for all events
+    onEvent: (event: any) => {
+      console.log('🔴 SSE Event received:', {
+        type: event.event,
+        data: event.data,
+        interrupt: stream.interrupt,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Special logging for interrupt events
+      if (event.event === 'interrupt' || event.data?.interrupt) {
+        console.log('🚨 INTERRUPT EVENT DETECTED!', event);
+      }
+    },
+  });
+  
+  // Log stream state after initialization
+  console.log('🔴 SSE Stream initialized with:', {
+    assistantId: agentId,
+    threadId,
+    hasInterrupt: !!stream.interrupt,
+    isLoading: stream.isLoading,
   });
 
   const sendMessage = useCallback(
@@ -86,10 +108,23 @@ export function useChat(
     stream.stop();
   }, [stream]);
 
+  // Handle interrupt resume - send the user's response back to the agent
+  const resumeWithValue = useCallback(
+    (value: string) => {
+      // Resume the interrupted agent with the user's response
+      stream.submit(undefined, {
+        command: { resume: value },
+      });
+    },
+    [stream],
+  );
+
   return {
     messages: stream.messages,
     isLoading: stream.isLoading,
+    interrupt: stream.interrupt, // Expose interrupt state
     sendMessage,
     stopStream,
+    resumeWithValue, // New method to resume with a value
   };
 }
