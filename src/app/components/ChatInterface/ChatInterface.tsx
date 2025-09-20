@@ -280,7 +280,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             <div className={styles.interruptQuestion}>
               {typeof interrupt === "string"
                 ? interrupt
-                : interrupt?.value || interrupt?.message || "Please provide input:"}
+                : (interrupt && typeof interrupt === "object"
+                  ? (interrupt.value || interrupt.message || interrupt.action_request || "Please provide input:")
+                  : "Please provide input:")}
             </div>
           </div>
         )}
